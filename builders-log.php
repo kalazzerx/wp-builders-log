@@ -3,7 +3,7 @@
 Plugin Name: Aircraft Builders Log
 Plugin URI:  http://zenith.stratman.pw/builders-log-wp-plugin/
 Description: This plugin allows you to keep track of time spent on an aircraft build (or really anything). You assign an amount of time to each post, and the times can be aggregated by category and displayed on your site.
-Version:     20161006
+Version:     20161010
 Author:      Mark A. Stratman
 Author URI:  https://github.com/mstratman
 License:     GPL2
@@ -274,8 +274,8 @@ class WP_Builders_Log {
     }
 
     public function ajax_add_term() {
-        $taxonomy = !empty($_POST['taxonomy']) ? $_POST['taxonomy'] : '';
-        $term = !empty($_POST['term']) ? $_POST['term'] : '';
+        $taxonomy = sanitize_text_field(!empty($_POST['taxonomy']) ? $_POST['taxonomy'] : '');
+        $term = sanitize_text_field(!empty($_POST['term']) ? $_POST['term'] : '');
         $tax = get_taxonomy($taxonomy);
         check_ajax_referer('radio-tax-add-'.$taxonomy, '_wpnonce_radio-add-tag');
         if(!$tax || empty($term))
