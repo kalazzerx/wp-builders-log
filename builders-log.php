@@ -53,10 +53,15 @@ class WP_Builders_Log_Widget extends WP_Widget {
             'taxonomy' => WP_Builders_Log::BUILDERS_LOG_TAXONOMY,
             'hide_empty' => true
         ));
+        $total_hours = 0;
         foreach ($sections as $section) {
-            $total_min = (int) get_term_meta($section->term_id, '_build_time_total_minutes', true);
-            $hours = ($total_min / 60);
+            $min = (int) get_term_meta($section->term_id, '_build_time_total_minutes', true);
+            $hours = ($min / 60);
+            $total_hours += $hours;
             echo '<tr><td><a href="' . get_term_link($section) . '">' . $section->name . '</a></td><td>' . $hours . '</td></tr>';
+        }
+        if (count($sections) > 1) {
+            echo '<tr><td><em>' . __('Total') . '</em></td><td><em>' . $total_hours . '</em></td></tr>';
         }
 
         echo '</tbody></table>';
