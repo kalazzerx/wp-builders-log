@@ -26,3 +26,7 @@ Usage:
 2. Activiate the plugin, if you didn't already
 3. Now to show your times on your site, go to the "Appearance" menu and choose "Widgets."  Find and add the "Aircraft Build Time" widget
 
+== Screenshots ==
+
+1. Adding build time when creating or editing a post
+2. Build time widget on your site

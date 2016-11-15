@@ -248,7 +248,7 @@ class WP_Builders_Log {
     }
 
     public static function register_taxonomy_plane_section() {
-        $labels = [
+        $labels = array(
             'name'              => _x('Airplane Sections', 'taxonomy general name'),
             'singular_name'     => _x('Airplane Section', 'taxonomy singular name'),
             'search_items'      => __('Search Sections'),
@@ -260,15 +260,15 @@ class WP_Builders_Log {
             'add_new_item'      => __('Add New Airplane Section'),
             'new_item_name'     => __('New Airplane Section Name'),
             'menu_name'         => __('Airplane Sections'),
-        ];
-        $args = [
+        );
+        $args = array(
             'hierarchical'      => false,
             'labels'            => $labels,
             'show_ui'           => true,
             'show_admin_column' => true,
             'query_var'         => true,
             'rewrite'           => ['slug' => 'airplane_section'],
-        ];
+        );
         register_taxonomy(self::BUILDERS_LOG_TAXONOMY, ['post'], $args);
     }
 
