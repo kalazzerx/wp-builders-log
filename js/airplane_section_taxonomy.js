@@ -1,13 +1,13 @@
 jQuery(document).ready(function($) {
     var taxonomy = 'airplane_section';
 
-    $('#' + taxonomy + 'checklist li :radio, #' + taxonomy + 'checklist-pop :radio').live( 'click', function(){
+    $('#' + taxonomy + 'checklist li :radio, #' + taxonomy + 'checklist-pop').on( 'click', 'radio', function(){
         var t = $(this), c = t.is(':checked'), id = t.val();
         $('#' + taxonomy + 'checklist li :radio, #' + taxonomy + 'checklist-pop :radio').prop('checked',false);
         $('#in-' + taxonomy + '-' + id + ', #in-popular-' + taxonomy + '-' + id).prop( 'checked', c );
     });
 
-    $('#' + taxonomy +'-add .radio-tax-add').live( 'click', function(){
+    $('#' + taxonomy +'-add').on( 'click', '.radio-tax-add',function(){
     term = $('#' + taxonomy+'-add #new'+taxonomy).val();
     nonce =$('#' + taxonomy+'-add #_wpnonce_radio-add-tag').val();
     $.post(ajaxurl, {
