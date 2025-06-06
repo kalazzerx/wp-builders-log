@@ -3,20 +3,31 @@
 Plugin Name: Aircraft Builders Log
 Plugin URI:  http://zenith.stratman.pw/builders-log-wp-plugin/
 Description: This plugin allows you to keep track of time spent on an aircraft build (or really anything). You assign an amount of time to each post, and the times can be aggregated by category and displayed on your site.
-Version:     20161117
+Version:     2.0.0
 Author:      Mark A. Stratman
 Author URI:  https://github.com/mstratman
 License:     GPL2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: aircraft-builders-log
+Domain Path: /languages
+Requires at least: 5.0
+Requires PHP: 7.0
+Tested up to: 6.4
 */
+
+// If this file is called directly, abort.
+if (!defined('WPINC')) {
+    die;
+}
 
 class WP_Builders_Log_Widget extends WP_Widget {
     public function __construct() {
         parent::__construct(
             'airplane_section_widget', // base ID
-            __('Aircraft Build Time'), // Name
+            __('Aircraft Build Time', 'aircraft-builders-log'), // Name
             array(
-                'description' => __('Show time spent building your aircraft'),
+                'description' => __('Show time spent building your aircraft', 'aircraft-builders-log'),
+                'classname' => 'aircraft-builders-log-widget',
             )
         );
     }
@@ -71,8 +82,9 @@ class WP_Builders_Log_Widget extends WP_Widget {
 
 class WP_Builders_Log {
     const BUILDERS_LOG_TAXONOMY = 'airplane_section';
+    const VERSION = '2.0.0';
 
-    static $instance = false;
+    private static $instance = false;
     public static function getInstance() {
         if (! self::$instance) {
             self::$instance = new self;
@@ -81,11 +93,9 @@ class WP_Builders_Log {
     }
 
     private function __construct() {
-
-        // Make sure custom slugs work for airplane sections
-        add_action('admin_init', 'flush_rewrite_rules');
-        register_deactivation_hook(__FILE__, 'flush_rewrite_rules');
-
+        // Set up text domain for translations
+        load_plugin_textdomain('aircraft-builders-log', false, dirname(plugin_basename(__FILE__)) . '/languages');
+        
         // Add a new taxonomy for airplane sections.  This will be used to force selection of
         // only a single airplane section at a time (to simplify time tracking).
         // Otherwise these are pretty much the same as categories.
@@ -93,12 +103,13 @@ class WP_Builders_Log {
 
         // Remove the default controls for adding an airplane section to a post.
         add_action('admin_menu', array(__CLASS__, 'remove_default_airplane_section_meta_box'));
-        // Add new controls that use radio buttons rather than multi-select.
-        add_action('add_meta_boxes_post', array(__CLASS__, 'add_airplane_section_meta_box'));
+        add_action('add_meta_boxes', array(__CLASS__, 'add_airplane_section_meta_box'));
 
-        // script to keep radio buttons in sync on admin meta box form
+        // Include JavaScript to handle radio button behavior
         add_action('admin_enqueue_scripts', array(__CLASS__, 'admin_script'));
+        
         // Allow admins to add new airplane sections from the post edit page
+        // AJAX handler - only register once with static method
         add_action('wp_ajax_radio_tax_add_taxterm', array(__CLASS__,'ajax_add_term'));
 
         // Add a new box to the post add/edit page to record hours and minutes spent
@@ -164,11 +175,11 @@ class WP_Builders_Log {
             <div id="<?php echo self::BUILDERS_LOG_TAXONOMY; ?>-pop" class="tabs-panel" style="display: none;">
                 <ul id="<?php echo self::BUILDERS_LOG_TAXONOMY; ?>checklist-pop" class="categorychecklist form-no-clear" >
                     <?php   foreach($popular_terms as $term){
-                        $id = 'popular-'.self::BUILDERS_LOG_TAXONOMY .'-'.$term->slug;
-                        echo "<li id='$id'><label class='selectit'>";
-                        echo "<input type='radio' id='in-$id'".checked($current_term_id,$term->term_id,false)."value='$term->slug' />$term->name<br />";
-                        echo "</label></li>";
-                    }?>
+                    $id = 'popular-'.self::BUILDERS_LOG_TAXONOMY .'-'.$term->slug;
+                    echo "<li id='$id'><label class='selectit'>";
+                    echo "<input type='radio' id='in-$id' name='{$input_name}'".checked($current_term_id,$term->term_id,false)." value='$term->slug' />$term->name<br />";
+                    echo "</label></li>";
+                }?>
                 </ul>
             </div>
             <p id="<?php echo self::BUILDERS_LOG_TAXONOMY; ?>-add" class="">
@@ -273,32 +284,49 @@ class WP_Builders_Log {
     }
 
     public static function admin_script() {
-        wp_register_script('airplane_section_taxonomy', plugins_url( '/js/airplane_section_taxonomy.js', __FILE__ ), array('jquery'), null, true ); // We specify true here to tell WordPress this script needs to be loaded in the footer
-        wp_localize_script('airplane_section_taxonomy', 'airplane_section_taxonomy', array('slug'=>self::BUILDERS_LOG_TAXONOMY));
+        $version = '2.0.0';
+        wp_register_script('airplane_section_taxonomy', plugins_url('/js/airplane_section_taxonomy.js', __FILE__), array('jquery'), $version, true);
+        wp_localize_script('airplane_section_taxonomy', 'airplane_section_taxonomy', array(
+            'slug' => self::BUILDERS_LOG_TAXONOMY,
+            'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('radio-tax-add-' . self::BUILDERS_LOG_TAXONOMY)
+        ));
         wp_enqueue_script('airplane_section_taxonomy');
     }
 
-    public function ajax_add_term() {
-        $taxonomy = sanitize_text_field(!empty($_POST['taxonomy']) ? $_POST['taxonomy'] : '');
-        $term = sanitize_text_field(!empty($_POST['term']) ? $_POST['term'] : '');
-        $tax = get_taxonomy($taxonomy);
-        check_ajax_referer('radio-tax-add-'.$taxonomy, '_wpnonce_radio-add-tag');
-        if(!$tax || empty($term))
-            exit();
-        if ( !current_user_can( $tax->cap->edit_terms ) )
-            die('-1');
-        $term = wp_insert_term($term, $taxonomy);
-        if ( !$term || is_wp_error($term) || (!$term = get_term( $term['term_id'], $taxonomy )) ) {
-            //TODO Error handling
-            exit();
+    public static function ajax_add_term() {
+        // Verify request is valid
+        if (!check_ajax_referer('radio-tax-add-' . self::BUILDERS_LOG_TAXONOMY, '_wpnonce_radio-add-tag', false)) {
+            wp_send_json_error(array('message' => __('Security check failed', 'aircraft-builders-log')));
         }
-    
-        $id = $taxonomy.'-'.$term->slug;
+        
+        // Sanitize and validate inputs
+        $taxonomy = isset($_POST['taxonomy']) ? sanitize_text_field($_POST['taxonomy']) : '';
+        $term = isset($_POST['term']) ? sanitize_text_field($_POST['term']) : '';
+        
+        $tax = get_taxonomy($taxonomy);
+        if (!$tax || empty($term)) {
+            wp_send_json_error(array('message' => __('Invalid taxonomy or term', 'aircraft-builders-log')));
+        }
+        
+        // Check permissions
+        if (!current_user_can($tax->cap->edit_terms)) {
+            wp_send_json_error(array('message' => __('Insufficient permissions', 'aircraft-builders-log')));
+        }
+        
+        // Insert the term
+        $term_result = wp_insert_term($term, $taxonomy);
+        if (is_wp_error($term_result) || (!$term_object = get_term($term_result['term_id'], $taxonomy))) {
+            wp_send_json_error(array('message' => __('Failed to create term', 'aircraft-builders-log')));
+        }
+        
+        // Create HTML for response
+        $id = $taxonomy . '-' . $term_object->slug;
         $name = 'tax_input[' . $taxonomy . ']';
-        $html ='<li id="'.$id.'"><label class="selectit"><input type="radio" checked="checked" id="in-'.$id.'" name="'.$name.'" value="'.$term->slug.'" />'. $term->name.'</label></li>';
-    
-        echo json_encode(array('term'=>$term->term_id,'html'=>$html));
-        exit();
+        $html = '<li id="' . esc_attr($id) . '"><label class="selectit"><input type="radio" checked="checked" id="in-' . esc_attr($id) . '" name="' . esc_attr($name) . '" value="' . esc_attr($term_object->slug) . '" />' . esc_html($term_object->name) . '</label></li>';
+        
+        wp_send_json_success(array('term' => $term_object->term_id, 'html' => $html));
+
     }
 
     // $term should be a WP_Term objection from get_terms(),
@@ -328,5 +356,67 @@ class WP_Builders_Log {
         update_term_meta($term->term_id, '_build_time_total_minutes', $total_min);
     }
 }
+
+// Add activation and deactivation methods
+function aircraft_builders_log_activate() {
+    // Ensure our custom taxonomy is registered before flushing
+    WP_Builders_Log::register_taxonomy_plane_section();
+    // Flush rewrite rules on activation
+    flush_rewrite_rules();
+}
+
+function aircraft_builders_log_deactivate() {
+    // Flush rewrite rules on deactivation
+    flush_rewrite_rules();
+}
+
+// Class method for activation
+function aircraft_builders_log_activation_hook() {
+    aircraft_builders_log_activate();
+}
+
+// Class method for deactivation
+function aircraft_builders_log_deactivation_hook() {
+    aircraft_builders_log_deactivate();
+}
+
+// Add block editor support
+function aircraft_builders_log_register_block() {
+    if (function_exists('register_block_type')) {
+        register_block_type('aircraft-builders-log/widget', array(
+            'editor_script' => 'aircraft-builders-log-block',
+            'render_callback' => 'aircraft_builders_log_render_block',
+        ));
+    }
+}
+
+function aircraft_builders_log_render_block($attributes) {
+    $instance = array(
+        'title' => isset($attributes['title']) ? sanitize_text_field($attributes['title']) : __('Aircraft Build Time', 'aircraft-builders-log')
+    );
+    
+    $widget = new WP_Builders_Log_Widget();
+    ob_start();
+    $widget->widget(array('before_widget' => '', 'after_widget' => ''), $instance);
+    return ob_get_clean();
+}
+
+function aircraft_builders_log_enqueue_block_editor_assets() {
+    // To be implemented when creating block editor assets
+    // wp_enqueue_script('aircraft-builders-log-block', plugin_dir_url(__FILE__) . 'js/block.js', array('wp-blocks', 'wp-element', 'wp-editor'), '2.0.0');
+}
+
+// Hook into WordPress
+add_action('init', 'aircraft_builders_log_register_block');
+add_action('enqueue_block_editor_assets', 'aircraft_builders_log_enqueue_block_editor_assets');
+
+// Register activation and deactivation hooks
+register_activation_hook(__FILE__, 'aircraft_builders_log_activation_hook');
+register_deactivation_hook(__FILE__, 'aircraft_builders_log_deactivation_hook');
+
+// Register the widget
+add_action('widgets_init', function() {
+    register_widget('WP_Builders_Log_Widget');
+});
 
 $WP_Builders_Log = WP_Builders_Log::getInstance();
