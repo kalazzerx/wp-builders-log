@@ -1,9 +1,10 @@
 === Aircraft Builders Log ===
-Contributors: markstratman
+Contributors: markstratman, kalazzerx
 Tags: builders log, time tracker, aircraft, kitplane
-Requires at least: 4.6
-Tested up to: 4.7
-Stable tag: 4.7
+Requires at least: 5.0
+Tested up to: 6.4
+Stable tag: 2.0.0
+Requires PHP: 7.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,3 +31,14 @@ Usage:
 
 1. Adding build time when creating or editing a post
 2. Build time widget on your site
+
+== Changelog ==
+
+= 2.0.0 =
+* Fixed issue with adding new airplane sections and proper selection of radio buttons
+* Fixed tab switching for "Most Used" section categories
+* Updated compatibility with WordPress 6.4
+* Added proper radio button name attributes for consistent form submission
+* Improved error handling and user feedback
+* Fixed Ajax handler registration
+* Added JavaScript improvements for better UX

@@ -6,6 +6,8 @@ Description: This plugin allows you to keep track of time spent on an aircraft b
 Version:     2.0.0
 Author:      Mark A. Stratman
 Author URI:  https://github.com/mstratman
+Maintained by: Chris [kalazzerx]
+Maintainer URI: https://github.com/kalazzerx/wp-builders-log
 License:     GPL2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: aircraft-builders-log
